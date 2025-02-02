@@ -641,10 +641,18 @@ defmodule Mix.Tasks.Test do
         do: Enum.uniq(load_files ++ directly_included_test_files),
         else: load_files
 
-    matched_test_files =
-      load_files
-      |> filter_to_allowed_files(allowed_files)
-      |> filter_by_partition(shell, partitions)
+    matched_test_files = filter_by_partition(load_files, shell, partitions)
+    tests_to_run = filter_to_allowed_files(matched_test_files, allowed_files)
+
+    tests_to_require =
+      if opts[:all_warnings] do
+        matched_test_files
+        |> MapSet.new()
+        |> MapSet.difference(MapSet.new(tests_to_run))
+        |> MapSet.to_list()
+      else
+        []
+      end
 
     warn_files != [] && warn_misnamed_test_files(warn_files)
 
@@ -652,7 +660,7 @@ defmodule Mix.Tasks.Test do
       Enum.each(test_paths, &require_test_helper(shell, &1))
       # test_opts always wins because those are given via args
       ExUnit.configure(ex_unit_opts |> merge_helper_opts() |> Keyword.merge(test_opts))
-      CT.require_and_run(matched_test_files, test_paths, test_elixirc_options, opts)
+      CT.require_and_run(tests_to_run, test_paths, tests_to_require, test_elixirc_options, opts)
     catch
       kind, reason ->
         # Also mark the whole suite as failed
