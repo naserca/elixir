@@ -257,6 +257,32 @@ defmodule Module.Types.IntegrationTest do
   end
 
   describe "type checking" do
+    test "handles return value from then" do
+      files = %{
+        "a.ex" => """
+        defmodule A do
+          def a() do
+            case b() do
+              :ok -> :ok
+              :error -> :error
+            end
+          end
+
+          defp b() do
+            [true, false]
+            |> Enum.random()
+            |> then(fn
+              true -> :ok
+              _ -> :error
+            end)
+          end
+        end
+        """
+      }
+
+      assert_no_warnings(files)
+    end
+
     test "inferred remote calls" do
       files = %{
         "a.ex" => """
